@@ -99,9 +99,9 @@ if st.button("Predict"):
     
         # Jika model multi-class, ambil SHAP values hanya untuk kelas Dropout
         if isinstance(shap_values, list):
-            shap_values_dropout = shap_values[0]  # Jika multi-class
+            shap_values_dropout = shap_values[0]  # Jika model XGBoost multi-class
         else:
-            shap_values_dropout = shap_values[:, 0]  # Jika binary classification
+            shap_values_dropout = shap_values[:, :, 0]  # Pastikan semua fitur diambil
     
         st.write(f"Shape SHAP values setelah dipilih: {shap_values_dropout.shape}")
     
