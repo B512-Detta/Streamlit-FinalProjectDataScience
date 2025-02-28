@@ -30,7 +30,7 @@ st.title("Student Status Prediction")
 # Tambahkan opsi contoh input
 example_case = st.selectbox(
     "Pilih contoh input:",
-    ["Masukkan data manual", "Contoh Enrolled", "Contoh Graduate"]
+    ["Masukkan data manual"]
 )
 
 # Default input (bisa diedit oleh pengguna)
@@ -46,30 +46,6 @@ user_input = {
     "Gender_M": True,
     "Daytime_evening_attendance_Evening": False,
 }
-
-# Gunakan contoh input jika dipilih
-if example_case == "Contoh Enrolled":
-    user_input.update({
-        "Application_order": 2,
-        "Previous_qualification_grade": 150.0,
-        "Admission_grade": 160.0,
-        "Curricular_units_1st_sem_enrolled": 7,
-        "Curricular_units_2nd_sem_enrolled": 7,
-        "Curricular_units_1st_sem_grade": 12.5,
-        "Curricular_units_2nd_sem_grade": 12.8,
-        "GDP": 2.0,
-    })
-elif example_case == "Contoh Graduate":
-    user_input.update({
-        "Application_order": 1,
-        "Previous_qualification_grade": 180.0,
-        "Admission_grade": 190.0,
-        "Curricular_units_1st_sem_enrolled": 8,
-        "Curricular_units_2nd_sem_enrolled": 8,
-        "Curricular_units_1st_sem_grade": 15.0,
-        "Curricular_units_2nd_sem_grade": 15.5,
-        "GDP": 3.0,
-    })
 
 # Tampilkan input fields
 for feature in user_input:
