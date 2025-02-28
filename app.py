@@ -94,14 +94,14 @@ if st.button("Predict"):
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(data_scaled)
     
-        # Pastikan model menggunakan multi-class classification
+        # Jika model multi-class, ambil hanya SHAP values untuk kelas Dropout (kelas 0)
         if isinstance(shap_values, list):
-            shap_values_dropout = shap_values[0]  # Ambil hanya untuk kelas "Dropout"
+            shap_values_dropout = shap_values[0]  # Jika XGBoost multi-class, ambil kelas pertama (Dropout)
         else:
-            shap_values_dropout = shap_values  # Jika hanya ada 1 kelas
+            shap_values_dropout = shap_values[:, 0]  # Jika bukan list, langsung ambil kelas pertama
     
         # Hitung rata-rata absolut dari SHAP values untuk setiap fitur
-        feature_importance = pd.Series(np.abs(shap_values_dropout).mean(axis=0), index=selected_features[:shap_values_dropout.shape[1]])
+        feature_importance = pd.Series(np.abs(shap_values_dropout).mean(axis=0), index=selected_features)
     
         # Ambil 3 faktor penyebab dropout terbesar
         top_factors = feature_importance.nlargest(3)
