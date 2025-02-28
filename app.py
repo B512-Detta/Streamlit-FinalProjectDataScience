@@ -94,19 +94,28 @@ if st.button("Predict"):
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(data_scaled)
     
-        # Jika model multi-class, ambil hanya SHAP values untuk kelas Dropout (kelas 0)
+        # Debugging: Cek shape SHAP values
+        st.write(f"Shape SHAP values: {shap_values.shape}")
+    
+        # Jika model multi-class, ambil SHAP values hanya untuk kelas Dropout
         if isinstance(shap_values, list):
-            shap_values_dropout = shap_values[0]  # Jika XGBoost multi-class, ambil kelas pertama (Dropout)
+            shap_values_dropout = shap_values[0]  # Jika multi-class
         else:
-            shap_values_dropout = shap_values[:, 0]  # Jika bukan list, langsung ambil kelas pertama
+            shap_values_dropout = shap_values[:, 0]  # Jika binary classification
     
-        # Hitung rata-rata absolut dari SHAP values untuk setiap fitur
-        feature_importance = pd.Series(np.abs(shap_values_dropout).mean(axis=0), index=selected_features)
+        st.write(f"Shape SHAP values setelah dipilih: {shap_values_dropout.shape}")
     
-        # Ambil 3 faktor penyebab dropout terbesar
-        top_factors = feature_importance.nlargest(3)
+        # Pastikan jumlah fitur sesuai
+        if shap_values_dropout.shape[1] != len(selected_features):
+            st.error(f"Jumlah fitur SHAP ({shap_values_dropout.shape[1]}) tidak cocok dengan selected_features ({len(selected_features)})!")
+        else:
+            # Hitung rata-rata absolut dari SHAP values untuk setiap fitur
+            feature_importance = pd.Series(np.abs(shap_values_dropout).mean(axis=0), index=selected_features)
     
-        st.write("🔍 **Faktor utama penyebab Dropout:**")
-        for factor, value in top_factors.items():
-            st.write(f"- {factor} (SHAP Value: {value:.4f})")
+            # Ambil 3 faktor penyebab dropout terbesar
+            top_factors = feature_importance.nlargest(3)
+    
+            st.write("🔍 **Faktor utama penyebab Dropout:**")
+            for factor, value in top_factors.items():
+                st.write(f"- {factor} (SHAP Value: {value:.4f})")
 
