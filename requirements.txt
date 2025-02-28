@@ -4,3 +4,4 @@ numpy==1.26.4
 pickleshare==0.7.5
 streamlit==1.42.2
 scikit-learn==1.6.1
+xgboost
