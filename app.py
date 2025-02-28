@@ -9,26 +9,47 @@ Original file is located at
 
 import streamlit as st
 import pickle
-import numpy as np
+import pandas as pd
 
-# Load model yang sudah dilatih
-with open('random_forest_model.pkl', 'rb') as model_file:
-    model = pickle.load(model_file)
+# Load model
+with open('xgboost_student_status.pkl', 'rb') as file:
+    model = pickle.load(file)
 
-st.title("Prediksi Dropout Mahasiswa")
-st.write("Masukkan informasi mahasiswa untuk memprediksi kemungkinan dropout.")
+# Load scaler
+with open('scaler.pkl', 'rb') as file:
+    scaler = pickle.load(file)
 
-# Input fitur dari pengguna
-age = st.number_input("Usia saat mendaftar", min_value=15, max_value=60, value=20)
-admission_grade = st.number_input("Nilai Penerimaan", min_value=0.0, max_value=200.0, value=120.0)
-curricular_units_1st_sem = st.number_input("Jumlah Mata Kuliah Semester 1", min_value=0, max_value=20, value=5)
-curricular_units_2nd_sem = st.number_input("Jumlah Mata Kuliah Semester 2", min_value=0, max_value=20, value=5)
+# Load daftar fitur yang digunakan saat training
+with open('selected_features.pkl', 'rb') as file:
+    selected_features = pickle.load(file)
 
-# Simpan input ke dalam array tanpa scaler
-data_input = np.array([[age, admission_grade, curricular_units_1st_sem, curricular_units_2nd_sem]])
+st.title("Student Status Prediction")
 
-if st.button("Prediksi"):
-    prediction = model.predict(data_input)
-    result = "Dropout" if prediction[0] == 1 else "Tidak Dropout"
+# Buat inputan untuk semua fitur
+user_input = {
+    "Application_order": st.number_input("Application Order", min_value=1, max_value=10, value=1),
+    "Previous_qualification_grade": st.number_input("Previous Qualification Grade", min_value=0.0, max_value=200.0, value=140.0),
+    "Admission_grade": st.number_input("Admission Grade", min_value=0.0, max_value=200.0, value=140.0),
+    "Curricular_units_1st_sem_enrolled": st.number_input("Curricular Units 1st Sem Enrolled", min_value=0, max_value=20, value=6),
+    "Curricular_units_2nd_sem_enrolled": st.number_input("Curricular Units 2nd Sem Enrolled", min_value=0, max_value=20, value=6),
+    "Curricular_units_1st_sem_grade": st.number_input("Curricular Units 1st Sem Grade", min_value=0.0, max_value=20.0, value=11.83),
+    "Curricular_units_2nd_sem_grade": st.number_input("Curricular Units 2nd Sem Grade", min_value=0.0, max_value=20.0, value=11.86),
+    "GDP": st.number_input("GDP", min_value=0.0, max_value=10.0, value=1.79),
+    "Gender_M": st.selectbox("Gender", ["Laki-laki", "Perempuan"]) == "Laki-laki",
+    "Daytime_evening_attendance_Evening": st.selectbox("Jenis Kuliah", ["Siang", "Malam"]) == "Malam",
+}
+
+# Konversi input ke DataFrame
+data_input = pd.DataFrame([user_input])
+
+# Pastikan input memiliki semua fitur
+data_input = data_input.reindex(columns=selected_features, fill_value=0)
+
+# Lakukan scaling
+data_scaled = scaler.transform(data_input)
+
+if st.button("Predict"):
+    prediction = model.predict(data_scaled)
+    result = ["Dropout", "Enrolled", "Graduate"][prediction[0]]
     st.write(f"### Hasil Prediksi: {result}")
 
