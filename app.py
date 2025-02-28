@@ -8,48 +8,55 @@ Original file is located at
 """
 
 import streamlit as st
+import shap
+import numpy as np
 import pickle
 import pandas as pd
+import matplotlib.pyplot as plt
 
-# Load model
+# Load Model & Scaler
 with open('xgboost_student_status.pkl', 'rb') as file:
     model = pickle.load(file)
 
-# Load scaler
 with open('scaler.pkl', 'rb') as file:
     scaler = pickle.load(file)
 
-# Load daftar fitur yang digunakan saat training
-with open('selected_features.pkl', 'rb') as file:
-    selected_features = pickle.load(file)
+# Define Features
+features = ['Curricular_units_1st_sem_enrolled', 'Curricular_units_1st_sem_credited',
+            'Curricular_units_1st_sem_approved', 'Curricular_units_1st_sem_evaluations',
+            'Curricular_units_1st_sem_grade', 'Curricular_units_2nd_sem_credited',
+            'Curricular_units_2nd_sem_enrolled', 'Curricular_units_2nd_sem_without_evaluations',
+            'Tuition_fees_up_to_date', 'Scholarship_holder', 'Mothers_occupation', 'Fathers_occupation']
 
-st.title("Student Status Prediction")
+st.title("Dropout Prediction & Explanation")
 
-# Buat inputan untuk semua fitur
-user_input = {
-    "Application_order": st.number_input("Application Order", min_value=1, max_value=10, value=1),
-    "Previous_qualification_grade": st.number_input("Previous Qualification Grade", min_value=0.0, max_value=200.0, value=140.0),
-    "Admission_grade": st.number_input("Admission Grade", min_value=0.0, max_value=200.0, value=140.0),
-    "Curricular_units_1st_sem_enrolled": st.number_input("Curricular Units 1st Sem Enrolled", min_value=0, max_value=20, value=6),
-    "Curricular_units_2nd_sem_enrolled": st.number_input("Curricular Units 2nd Sem Enrolled", min_value=0, max_value=20, value=6),
-    "Curricular_units_1st_sem_grade": st.number_input("Curricular Units 1st Sem Grade", min_value=0.0, max_value=20.0, value=11.83),
-    "Curricular_units_2nd_sem_grade": st.number_input("Curricular Units 2nd Sem Grade", min_value=0.0, max_value=20.0, value=11.86),
-    "GDP": st.number_input("GDP", min_value=0.0, max_value=10.0, value=1.79),
-    "Gender_M": st.selectbox("Gender", ["Laki-laki", "Perempuan"]) == "Laki-laki",
-    "Daytime_evening_attendance_Evening": st.selectbox("Jenis Kuliah", ["Siang", "Malam"]) == "Malam",
-}
+# User Inputs
+user_input = {}
+for feature in features:
+    user_input[feature] = st.number_input(feature, value=0)
 
-# Konversi input ke DataFrame
-data_input = pd.DataFrame([user_input])
-
-# Pastikan input memiliki semua fitur
-data_input = data_input.reindex(columns=selected_features, fill_value=0)
-
-# Lakukan scaling
-data_scaled = scaler.transform(data_input)
+data = pd.DataFrame([user_input])
+data_scaled = scaler.transform(data)
 
 if st.button("Predict"):
-    prediction = model.predict(data_scaled)
-    result = ["Dropout", "Enrolled", "Graduate"][prediction[0]]
-    st.write(f"### Hasil Prediksi: {result}")
+    prediction = model.predict(data_scaled)[0]
+    prediction_label = ['Dropout', 'Enrolled', 'Graduate'][prediction]
+    st.write(f"### Prediction: {prediction_label}")
+    
+    # Explainability with SHAP
+    explainer = shap.Explainer(model)
+    shap_values = explainer.shap_values(data_scaled)
+    
+    if prediction_label == 'Dropout':
+        st.write("#### Key Factors Contributing to Dropout:")
+        feature_importance = np.abs(shap_values).mean(axis=0)
+        sorted_idx = np.argsort(feature_importance)[::-1]
+        top_features = [features[i] for i in sorted_idx[:3]]  # Top 3 features
+        for feature in top_features:
+            st.write(f"- {feature}")
+        
+        # Visualize SHAP values
+        fig, ax = plt.subplots()
+        shap.summary_plot(shap_values, data, plot_type="bar", show=False)
+        st.pyplot(fig)
 
