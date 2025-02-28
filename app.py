@@ -8,55 +8,96 @@ Original file is located at
 """
 
 import streamlit as st
-import shap
-import numpy as np
 import pickle
 import pandas as pd
-import matplotlib.pyplot as plt
+import shap
+import numpy as np
 
-# Load Model & Scaler
+# Load model
 with open('xgboost_student_status.pkl', 'rb') as file:
     model = pickle.load(file)
 
+# Load scaler
 with open('scaler.pkl', 'rb') as file:
     scaler = pickle.load(file)
 
-# Define Features
-features = ['Curricular_units_1st_sem_enrolled', 'Curricular_units_1st_sem_credited',
-            'Curricular_units_1st_sem_approved', 'Curricular_units_1st_sem_evaluations',
-            'Curricular_units_1st_sem_grade', 'Curricular_units_2nd_sem_credited',
-            'Curricular_units_2nd_sem_enrolled', 'Curricular_units_2nd_sem_without_evaluations',
-            'Tuition_fees_up_to_date', 'Scholarship_holder', 'Mothers_occupation', 'Fathers_occupation']
+# Load daftar fitur yang digunakan saat training
+with open('selected_features.pkl', 'rb') as file:
+    selected_features = pickle.load(file)
 
-st.title("Dropout Prediction & Explanation")
+st.title("Student Status Prediction")
 
-# User Inputs
-user_input = {}
-for feature in features:
-    user_input[feature] = st.number_input(feature, value=0)
+# Tambahkan opsi contoh input
+example_case = st.selectbox(
+    "Pilih contoh input:",
+    ["Masukkan data manual", "Contoh Enrolled", "Contoh Graduate"]
+)
 
-data = pd.DataFrame([user_input])
-data_scaled = scaler.transform(data)
+# Default input (bisa diedit oleh pengguna)
+user_input = {
+    "Application_order": 1,
+    "Previous_qualification_grade": 140.0,
+    "Admission_grade": 140.0,
+    "Curricular_units_1st_sem_enrolled": 6,
+    "Curricular_units_2nd_sem_enrolled": 6,
+    "Curricular_units_1st_sem_grade": 11.83,
+    "Curricular_units_2nd_sem_grade": 11.86,
+    "GDP": 1.79,
+    "Gender_M": True,
+    "Daytime_evening_attendance_Evening": False,
+}
 
+# Gunakan contoh input jika dipilih
+if example_case == "Contoh Enrolled":
+    user_input.update({
+        "Application_order": 2,
+        "Previous_qualification_grade": 150.0,
+        "Admission_grade": 160.0,
+        "Curricular_units_1st_sem_enrolled": 7,
+        "Curricular_units_2nd_sem_enrolled": 7,
+        "Curricular_units_1st_sem_grade": 12.5,
+        "Curricular_units_2nd_sem_grade": 12.8,
+        "GDP": 2.0,
+    })
+elif example_case == "Contoh Graduate":
+    user_input.update({
+        "Application_order": 1,
+        "Previous_qualification_grade": 180.0,
+        "Admission_grade": 190.0,
+        "Curricular_units_1st_sem_enrolled": 8,
+        "Curricular_units_2nd_sem_enrolled": 8,
+        "Curricular_units_1st_sem_grade": 15.0,
+        "Curricular_units_2nd_sem_grade": 15.5,
+        "GDP": 3.0,
+    })
+
+# Tampilkan input fields
+for feature in user_input:
+    if isinstance(user_input[feature], bool):
+        user_input[feature] = st.selectbox(feature, ["Tidak", "Ya"]) == "Ya"
+    else:
+        user_input[feature] = st.number_input(feature, value=user_input[feature])
+
+# Konversi input ke DataFrame
+data_input = pd.DataFrame([user_input])
+data_input = data_input.reindex(columns=selected_features, fill_value=0)
+data_scaled = scaler.transform(data_input)
+
+# Prediksi
 if st.button("Predict"):
-    prediction = model.predict(data_scaled)[0]
-    prediction_label = ['Dropout', 'Enrolled', 'Graduate'][prediction]
-    st.write(f"### Prediction: {prediction_label}")
-    
-    # Explainability with SHAP
-    explainer = shap.Explainer(model)
-    shap_values = explainer.shap_values(data_scaled)
-    
-    if prediction_label == 'Dropout':
-        st.write("#### Key Factors Contributing to Dropout:")
-        feature_importance = np.abs(shap_values).mean(axis=0)
-        sorted_idx = np.argsort(feature_importance)[::-1]
-        top_features = [features[i] for i in sorted_idx[:3]]  # Top 3 features
-        for feature in top_features:
-            st.write(f"- {feature}")
-        
-        # Visualize SHAP values
-        fig, ax = plt.subplots()
-        shap.summary_plot(shap_values, data, plot_type="bar", show=False)
-        st.pyplot(fig)
+    prediction = model.predict(data_scaled)
+    result = ["Dropout", "Enrolled", "Graduate"][prediction[0]]
+    st.write(f"### Hasil Prediksi: {result}")
+
+    # Analisis penyebab utama Dropout dengan SHAP
+    if result == "Dropout":
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(data_scaled)
+        feature_importance = pd.Series(np.abs(shap_values).mean(axis=0), index=selected_features)
+        top_factors = feature_importance.nlargest(3)
+
+        st.write("🔍 **Faktor utama penyebab Dropout:**")
+        for factor, value in top_factors.items():
+            st.write(f"- {factor} (SHAP Value: {value:.4f})")
+
 
